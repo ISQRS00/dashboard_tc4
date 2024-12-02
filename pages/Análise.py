@@ -90,7 +90,7 @@ with st.container():
         st.subheader("Gráfico de Preço do Barril de Petróleo")
         st.markdown(f"""
             O gráfico mostra a evolução do preço do barril de petróleo ao longo do tempo, destacando os principais picos e quedas de preço. 
-            Ele apresenta o preço médio de ($50.3063), com o maior valor registrado de ($143.95) e o menor de ($9.1). 
+            Ele apresenta o preço médio de 50.3063, com o maior valor registrado de 143.95 e o menor de 9.1. 
             Além disso, a análise revela uma tendência de aumento considerável até 2014, seguidos por uma queda acentuada, e uma recuperação gradual nos anos seguintes. 
             O gráfico também aponta para períodos de variação de preço, com picos significativos e quedas acentuadas durante a crise financeira de 2008 e a pandemia de COVID-19.
         """)
