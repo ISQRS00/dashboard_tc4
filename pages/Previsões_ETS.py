@@ -1,7 +1,3 @@
-import streamlit as st
-import requests
-import pandas as pd
-import plotly.express as px
 import os
 import streamlit as st
 import pandas as pd
@@ -15,43 +11,152 @@ import yfinance as yf
 from statsforecast import StatsForecast
 from plotly.subplots import make_subplots
 
-st.markdown("""
-        ### Referências
+# Função para calcular WMAPE
+def wmape(y_true, y_pred):
+    return np.abs(y_true - y_pred).sum() / np.abs(y_true).sum()
 
-        1. **Guerra e petróleo: veja reações mais drásticas da commodity a grandes conflitos**  
-           CNN Brasil. Disponível em: [Link](https://www.cnnbrasil.com.br/economia/macroeconomia/guerra-e-petroleo-veja-reacoes-mais-drasticas-da-commodity-a-grandes-conflitos/#:~:text=Guerra%20R%C3%BAssia%2DUcr%C3%A2nia,em%20US%24%20118%2C11).  
-           Acesso em: 30 nov. 2024.
+# Função para treinar o modelo ETS
+def train_ets_model(train_data):
+    season_length = 252  # Sazonalidade anual
+    model_ets = sm.tsa.ExponentialSmoothing(train_data['realizado'], seasonal='mul', seasonal_periods=season_length).fit()
+    return model_ets
 
-        2. **Entenda por que o preço do petróleo disparou com a guerra entre Ucrânia e Rússia**  
-           CNN Brasil. Disponível em: [Link](https://www.cnnbrasil.com.br/economia/mercado/entenda-por-que-o-preco-do-petroleo-disparou-com-a-guerra-entre-ucrania-e-russia/).  
-           Acesso em: 30 nov. 2024.
+# Configurações do Streamlit
+st.set_page_config(page_title="Deploy | Tech Challenge 4 | FIAP", layout='wide')
 
-        3. **COVID-19 e os impactos sobre o mercado de petróleo**  
-           IBP - Instituto Brasileiro de Petróleo e Gás. Disponível em: [Link](https://www.ibp.org.br/observatorio-do-setor/analises/covid-19-e-os-impactos-sobre-o-mercado-de-petroleo/#:~:text=A%20dissemina%C3%A7%C3%A3o%20do%20COVID%2D19,efeitos%20da%20pandemia%20na%20economia).  
-           Acesso em: 30 nov. 2024.
+# Carregar e preparar os dados
+@st.cache_data
+def load_data():
+    df = pd.read_csv('https://raw.githubusercontent.com/ISQRS00/dashboard_tc4/main/barril.csv', sep=';')
+    df.drop(columns=['Unnamed: 2'], inplace=True)
+    df.rename(columns={'Data': 'data', 'Preço - petróleo bruto - Brent (FOB) - US$ - Energy Information Administration (EIA) - EIA366_PBRENT366': 'realizado'}, inplace=True)
+    df['data'] = pd.to_datetime(df['data'])
+    df['realizado'] = df['realizado'].str.replace(',', '.').astype(float)
+    df['realizado'] = df['realizado'].ffill()  # Preencher valores ausentes
+    return df
 
-        4. **Contexto Mundial e Preço do Petróleo: Uma Visão de Longo Prazo**  
-           Empresa de Pesquisa Energética (EPE). Disponível em: [Link](https://www.epe.gov.br/sites-pt/publicacoes-dados-abertos/publicacoes/PublicacoesArquivos/publicacao-250/topico-302/Contexto%20Mundial%20e%20Pre%C3%A7o%20do%20Petr%C3%B3leo%20Uma%20Vis%C3%A3o%20de%20Longo%20Prazo[1].pdf).  
-           Acesso em: 30 nov. 2024.
+df_barril_petroleo = load_data()
 
-        5. **Fatores que Influenciam a Formação do Preço do Petróleo**  
-           Julia Fernandes Ramos. Disponível em: [Link](https://www.econ.puc-rio.br/uploads/adm/trabalhos/files/Julia_Fernandes_Ramos.pdf).  
-           Acesso em: 30 nov. 2024.
+# Explicação sobre o corte de dados
+st.write("""
+### Como Funciona o Corte dos Dados?
 
-        6. **Total energy supply (TES) by source, World, 1990-2022**  
-           International Energy Agency (IEA). Disponível em: [Link](https://www.iea.org/data-and-statistics/data-tools/energy-statistics-data-browser?country=WORLD&fuel=Energy%20supply&indicator=TESbySource).  
-           Acesso em: 30 nov. 2024.
-    """)
+O modelo de previsão ETS é treinado com base em dados históricos do preço do petróleo. Para avaliar a precisão do modelo, os dados são divididos em duas partes: 
+1. **Dados de Treinamento**: São usados para treinar o modelo e entender os padrões históricos.
+2. **Dados de Validação**: São usados para testar a performance do modelo e avaliar suas previsões.
 
-def exibir_aba_referencias():
-    aba = st.sidebar.radio("Navegação", ["Introdução", "Modelos", "Referências"])
+O **número de dias de corte** define a quantidade de dados mais recentes que serão usados para o teste do modelo. Ou seja, o modelo será treinado com os dados até um ponto específico e testado com os dados após esse ponto.
+
+**Como isso funciona?**
+- Se você selecionar um número menor de dias (ex: 7 dias), o modelo irá usar mais dados antigos para treinamento e preverá apenas os últimos dias mais recentes.
+- Se selecionar um número maior de dias (ex: 30 dias), o modelo será testado em uma janela de previsão maior e, portanto, mais desafiadora.
+
+Escolha o número de dias para o corte e veja como o modelo se comporta para diferentes períodos.
+""")
+
+# Explicação sobre o gráfico
+st.write("""
+### Gráfico de Previsões vs Realidade
+
+Após selecionar o número de dias de corte, o modelo ETS será treinado com os dados de treino e testado com os dados de validação. O gráfico a seguir compara o **valor real** do preço do petróleo (a linha "Realizado") com a **previsão** gerada pelo modelo ETS (a linha "Forecast").
+
+- **Realizado**: Mostra o preço do petróleo conforme registrado nos dados históricos.
+- **Forecast**: Mostra a previsão feita pelo modelo ETS para o período de validação.
+
+O modelo utiliza uma abordagem exponencial de suavização para captar tendências e sazonalidades nos dados históricos. Isso permite gerar previsões para o futuro próximo com base no que foi observado no passado.
+
+Acompanhe as previsões e veja como o modelo se comporta ao tentar prever os dados de preços do petróleo!
+""")
+
+
+
+# Input para o número de dias para corte
+dias_corte = st.number_input('Selecione o número de dias para o corte entre 7 e 90:', min_value=7, max_value=90, value=7)
+
+# Calcular a data de corte com base no número de dias
+cut_date = df_barril_petroleo['data'].max() - timedelta(days=dias_corte)
+
+# Dividir em treino e validação
+train = df_barril_petroleo.loc[df_barril_petroleo['data'] < cut_date]
+valid = df_barril_petroleo.loc[df_barril_petroleo['data'] >= cut_date]
+
+# Treinando o modelo ETS com dados de treino
+model_ets = train_ets_model(train)
+
+# Função para previsão com o modelo ETS
+def forecast_ets(train, valid):
+    season_length = 252  # Sazonalidade anual
+    model_ets = sm.tsa.ExponentialSmoothing(train['realizado'], seasonal='mul', seasonal_periods=season_length).fit()
+    forecast_ets = model_ets.forecast(len(valid))
+    forecast_dates = pd.date_range(start=train['data'].iloc[-1] + pd.Timedelta(days=1), periods=len(valid), freq='D')
+    ets_df = pd.DataFrame({'data': forecast_dates, 'previsão': forecast_ets})
+    ets_df = ets_df.merge(valid, on=['data'], how='inner')
+
+    wmape_ets = wmape(ets_df['realizado'].values, ets_df['previsão'].values)
+    MAE_ets = mean_absolute_error(ets_df['realizado'].values, ets_df['previsão'].values)
+    MSE_ets = mean_squared_error(ets_df['realizado'].values, ets_df['previsão'].values)
+    R2_ets = r2_score(ets_df['realizado'].values, ets_df['previsão'].values)
     
-    if aba == "Introdução":
-        st.title("Introdução")
-        st.write("Bem-vindo à análise de preços do petróleo.")
-    elif aba == "Modelos":
-        st.title("Modelos")
-        st.write("Aqui estão os modelos testados.")
-    elif aba == "Referências":
-        st.title("Referências")
-       
+    return ets_df, wmape_ets, MAE_ets, MSE_ets, R2_ets
+
+# Exibição das métricas de desempenho
+ets_df, wmape_ets, MAE_ets, MSE_ets, R2_ets = forecast_ets(train, valid)
+
+st.subheader('Métricas de Desempenho do Modelo ETS')
+st.write(f'WMAPE: {wmape_ets:.2%}')
+st.write(f'MAE: {MAE_ets:.3f}')
+st.write(f'MSE: {MSE_ets:.4f}')
+st.write(f'R²: {R2_ets:.2f}')
+
+# Criar gráfico ETS
+fig_ets = go.Figure()
+
+fig_ets.add_trace(go.Scatter(x=valid['data'], y=valid['realizado'], mode='lines', name='Realizado'))
+fig_ets.add_trace(go.Scatter(x=ets_df['data'], y=ets_df['previsão'], mode='lines', name='Forecast'))
+
+fig_ets.update_layout(
+    title="Previsão do Modelo ETS",
+    xaxis_title="Dia-Mês",
+    yaxis_title="Valor do Petróleo (US$)",
+    xaxis=dict(
+        tickformat="%d-%m-%Y", 
+        type="date", 
+        dtick="D1", 
+        nticks=30, 
+        tickangle=45  # Inclinar as datas em 45 graus
+    ),
+    yaxis=dict(
+        title="Valor (US$)", 
+        tickformat=".3f"
+    ),
+    autosize=True
+)
+
+# Exibição do gráfico
+st.plotly_chart(fig_ets)
+
+# Adicionar descrição do gráfico
+st.write("""
+**Descrição do Gráfico:** Este gráfico compara os valores reais do preço do petróleo (Realizado) com as previsões geradas pelo modelo ETS (Forecast). 
+O modelo ETS utiliza a sazonalidade anual para gerar previsões e busca capturar tendências e padrões nos dados históricos.
+""")
+
+# Explicação sobre o download do arquivo
+st.write("""
+### Baixar os Resultados da Previsão
+
+Após gerar as previsões com o modelo ETS, você pode baixar um arquivo `.csv` contendo as **previsões** feitas pelo modelo para os próximos dias. O arquivo inclui a data e o valor previsto do preço do petróleo, que pode ser útil para análises futuras ou para comparar com os dados reais posteriormente.
+
+Clique no botão abaixo para baixar as previsões em formato CSV.
+""")
+# Opção de Download dos Resultados
+st.subheader('Baixar Resultados')
+ets_df['previsão'] = ets_df['previsão'].round(2)
+csv = ets_df.to_csv(index=False)
+
+st.download_button(
+    label="Baixar Previsões ETS",
+    data=csv,
+    file_name="previsoes_ets.csv",
+    mime="text/csv"
+)
