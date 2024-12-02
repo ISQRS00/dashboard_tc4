@@ -98,7 +98,7 @@ fig_ets.add_trace(go.Scatter(x=ets_df['data'], y=ets_df['previsão'], mode='line
 
 fig_ets.update_layout(
     title="Previsão do Modelo ETS",
-    xaxis_title="Dia-Mês",
+    xaxis_title="Data",
     yaxis_title="Valor do Petróleo (US$)",
     xaxis=dict(
         tickformat="%d-%m-%Y", 
