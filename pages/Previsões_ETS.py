@@ -4,18 +4,15 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 from datetime import date, timedelta
-from sklearn.metrics import accuracy_score, r2_score, mean_absolute_error, mean_squared_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import statsmodels.api as sm
-from statsmodels.tsa.seasonal import seasonal_decompose
-import yfinance as yf
-from statsforecast import StatsForecast
-from plotly.subplots import make_subplots
 
 # Função para calcular WMAPE
 def wmape(y_true, y_pred):
     return np.abs(y_true - y_pred).sum() / np.abs(y_true).sum()
 
-# Função para treinar o modelo ETS
+# Função para treinar o modelo ETS (treinamento otimizado)
+@st.cache_data
 def train_ets_model(train_data):
     season_length = 252  # Sazonalidade anual
     model_ets = sm.tsa.ExponentialSmoothing(train_data['realizado'], seasonal='mul', seasonal_periods=season_length).fit()
@@ -24,7 +21,7 @@ def train_ets_model(train_data):
 # Configurações do Streamlit
 st.set_page_config(page_title="Deploy | Tech Challenge 4 | FIAP", layout='wide')
 
-# Carregar e preparar os dados
+# Carregar e preparar os dados (com cache)
 @st.cache_data
 def load_data():
     df = pd.read_csv('https://raw.githubusercontent.com/ISQRS00/dashboard_tc4/main/barril.csv', sep=';')
@@ -35,6 +32,7 @@ def load_data():
     df['realizado'] = df['realizado'].ffill()  # Preencher valores ausentes
     return df
 
+# Carregar dados uma vez com cache
 df_barril_petroleo = load_data()
 
 # Explicação sobre o corte de dados
@@ -53,22 +51,6 @@ O **número de dias de corte** define a quantidade de dados mais recentes que se
 
 Escolha o número de dias para o corte e veja como o modelo se comporta para diferentes períodos.
 """)
-
-# Explicação sobre o gráfico
-st.write("""
-### Gráfico de Previsões vs Realidade
-
-Após selecionar o número de dias de corte, o modelo ETS será treinado com os dados de treino e testado com os dados de validação. O gráfico a seguir compara o **valor real** do preço do petróleo (a linha "Realizado") com a **previsão** gerada pelo modelo ETS (a linha "Forecast").
-
-- **Realizado**: Mostra o preço do petróleo conforme registrado nos dados históricos.
-- **Forecast**: Mostra a previsão feita pelo modelo ETS para o período de validação.
-
-O modelo utiliza uma abordagem exponencial de suavização para captar tendências e sazonalidades nos dados históricos. Isso permite gerar previsões para o futuro próximo com base no que foi observado no passado.
-
-Acompanhe as previsões e veja como o modelo se comporta ao tentar prever os dados de preços do petróleo!
-""")
-
-
 
 # Input para o número de dias para corte
 dias_corte = st.number_input('Selecione o número de dias para o corte entre 7 e 90:', min_value=7, max_value=90, value=7)
@@ -149,6 +131,7 @@ Após gerar as previsões com o modelo ETS, você pode baixar um arquivo `.csv` 
 
 Clique no botão abaixo para baixar as previsões em formato CSV.
 """)
+
 # Opção de Download dos Resultados
 st.subheader('Baixar Resultados')
 ets_df['previsão'] = ets_df['previsão'].round(2)
