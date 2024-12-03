@@ -5,7 +5,6 @@ import plotly.graph_objects as go
 from datetime import timedelta
 import statsmodels.api as sm
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-import time
 
 # Configurações do Streamlit
 st.set_page_config(page_title="Deploy | Tech Challenge 4 | FIAP", layout='wide')
@@ -18,8 +17,8 @@ def wmape(y_true, y_pred):
 # Carregar e preparar os dados (com cache)
 @st.cache_data
 def load_data():
-    df = pd.read_csv('https://raw.githubusercontent.com/ISQRS00/dashboard_tc4/main/barril.csv', sep=';', 
-                     usecols=['Data', 'Preço - petróleo bruto - Brent (FOB) - US$ - Energy Information Administration (EIA) - EIA366_PBRENT366'])
+    df = pd.read_csv('https://raw.githubusercontent.com/ISQRS00/dashboard_tc4/main/barril.csv', sep=';')
+    df.drop(columns=['Unnamed: 2'], inplace=True)
     df.rename(columns={'Data': 'data', 'Preço - petróleo bruto - Brent (FOB) - US$ - Energy Information Administration (EIA) - EIA366_PBRENT366': 'realizado'}, inplace=True)
     df['data'] = pd.to_datetime(df['data'], format='%d/%m/%Y', dayfirst=True)
     df['realizado'] = df['realizado'].str.replace(',', '.').astype(float)
@@ -34,7 +33,7 @@ def train_ets_model(train_data, season_length=252):
 
 # Função para previsão com o modelo ETS
 @st.cache_data
-def forecast_ets(train, valid, _model_ets):
+def forecast_ets(train, valid, _model_ets):  # Modificado para _model_ets
     forecast_ets = _model_ets.forecast(len(valid))
     forecast_dates = pd.date_range(start=train['data'].iloc[-1] + pd.Timedelta(days=1), periods=len(valid), freq='D')
     ets_df = pd.DataFrame({'data': forecast_dates, 'previsão': forecast_ets})
@@ -65,10 +64,7 @@ dias_corte = st.number_input('Selecione o número de dias para o corte entre 7 e
 cut_date = df_barril_petroleo['data'].max() - timedelta(days=dias_corte)
 
 # Dividir em treino e validação
-parametro = pd.Timestamp('2025-12-31')  # Exemplo de valor para o parâmetro
-train = df_barril_petroleo.loc[(df_barril_petroleo['data'] < cut_date) & 
-                               (df_barril_petroleo['data'].dt.year > 2024) & 
-                               (df_barril_petroleo['data'] < parametro)]
+train = df_barril_petroleo.loc[df_barril_petroleo['data'] < cut_date]
 valid = df_barril_petroleo.loc[df_barril_petroleo['data'] >= cut_date]
 
 # Exibir o tamanho dos conjuntos
@@ -82,16 +78,14 @@ progress = st.progress(0)
 # Treinar o modelo ETS
 if st.button("Gerar Previsão"):
     # Atualizar barra de progresso para indicar que o treinamento está em andamento
-    progress.progress(0)
-    time.sleep(0.5)  # Adicione um pequeno atraso para permitir atualização da barra
+    for i in range(100):
+        progress.progress(i + 1)
     
     # Treinar o modelo
     model_ets = train_ets_model(train)
-    progress.progress(50)
     
     # Prever com o modelo ETS
     ets_df, wmape_ets, MAE_ets, MSE_ets, R2_ets = forecast_ets(train, valid, model_ets)
-    progress.progress(100)
 
     st.subheader('Métricas de Desempenho do Modelo ETS')
     st.write(f'WMAPE: {wmape_ets:.2%}')
