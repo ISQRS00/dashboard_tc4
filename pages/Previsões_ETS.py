@@ -3,6 +3,7 @@ import requests
 from PIL import Image
 from io import BytesIO
 import os
+import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
@@ -22,7 +23,7 @@ def wmape(y_true, y_pred):
 @st.cache_data
 def train_ets_model(train_data):
     season_length = 252  # Sazonalidade anual
-    model_ets = sm.tsa.ExponentialSmoothing(train_data['realizado'], seasonal='mul', seasonal_periods=season_length).fit()
+    model_ets = sm.tsa.ExponentialSmoothing(train_data['realizado'], seasonal='mul', seasonal_periods=season_length).fit(optimized=True)
     return model_ets
 
 # Configurações do Streamlit
@@ -69,14 +70,13 @@ cut_date = df_barril_petroleo['data'].max() - timedelta(days=dias_corte)
 train = df_barril_petroleo.loc[df_barril_petroleo['data'] < cut_date]
 valid = df_barril_petroleo.loc[df_barril_petroleo['data'] >= cut_date]
 
-# **Tirei a criação do modelo ETS dentro da função de previsão**
-# Agora o modelo ETS será treinado uma vez e reutilizado
-
-# Treinando o modelo ETS com dados de treino (apenas uma vez)
+# Treinando o modelo ETS com dados de treino
 model_ets = train_ets_model(train)
 
-# Função para previsão com o modelo ETS (agora reutiliza o modelo treinado)
-def forecast_ets(train, valid, model_ets):
+# Função para previsão com o modelo ETS
+def forecast_ets(train, valid):
+    season_length = 252  # Sazonalidade anual
+    model_ets = sm.tsa.ExponentialSmoothing(train['realizado'], seasonal='mul', seasonal_periods=season_length).fit()
     forecast_ets = model_ets.forecast(len(valid))
     forecast_dates = pd.date_range(start=train['data'].iloc[-1] + pd.Timedelta(days=1), periods=len(valid), freq='D')
     ets_df = pd.DataFrame({'data': forecast_dates, 'previsão': forecast_ets})
@@ -90,7 +90,7 @@ def forecast_ets(train, valid, model_ets):
     return ets_df, wmape_ets, MAE_ets, MSE_ets, R2_ets
 
 # Exibição das métricas de desempenho
-ets_df, wmape_ets, MAE_ets, MSE_ets, R2_ets = forecast_ets(train, valid, model_ets)
+ets_df, wmape_ets, MAE_ets, MSE_ets, R2_ets = forecast_ets(train, valid)
 
 st.subheader('Métricas de Desempenho do Modelo ETS')
 st.write(f'WMAPE: {wmape_ets:.2%}')
