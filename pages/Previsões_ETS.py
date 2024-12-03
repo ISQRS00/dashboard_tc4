@@ -30,15 +30,15 @@ def load_data():
     df['realizado'] = df['realizado'].ffill()  # Preencher valores ausentes
     return df
 
-# Função para treinar o modelo ETS
-@st.cache_data
+# Função para treinar o modelo ETS (utilizar cache de recursos)
+@st.cache_resource
 def train_ets_model(train_data, season_length=252):
     model_ets = sm.tsa.ExponentialSmoothing(train_data['realizado'], seasonal='mul', seasonal_periods=season_length).fit()
     return model_ets
 
 # Função para previsão com o modelo ETS
 @st.cache_data
-def forecast_ets(train, valid, _model_ets):
+def forecast_ets(train, valid, model_ets):
     forecast_ets = model_ets.forecast(len(valid))
     forecast_dates = pd.date_range(start=train['data'].iloc[-1] + pd.Timedelta(days=1), periods=len(valid), freq='D')
     ets_df = pd.DataFrame({'data': forecast_dates, 'previsão': forecast_ets})
