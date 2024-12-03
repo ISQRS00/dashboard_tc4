@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 from datetime import timedelta
 import statsmodels.api as sm
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+import joblib  # Importar o joblib para salvar e carregar o modelo
 
 # Configurações do Streamlit
 st.set_page_config(page_title="Deploy | Tech Challenge 4 | FIAP", layout='wide')
@@ -29,7 +30,13 @@ def load_data():
 @st.cache_resource
 def train_ets_model(train_data, season_length=252):
     model_ets = sm.tsa.ExponentialSmoothing(train_data['realizado'], seasonal='mul', seasonal_periods=season_length).fit()
+    # Salvar o modelo treinado usando joblib
+    joblib.dump(model_ets, 'modelo_ets.joblib')  # Salva o modelo
     return model_ets
+
+# Função para carregar o modelo ETS já treinado
+def load_ets_model():
+    return joblib.load('modelo_ets.joblib')  # Carrega o modelo salvo
 
 # Função para previsão com o modelo ETS
 @st.cache_data
@@ -116,3 +123,8 @@ if st.button("Gerar Previsão"):
         file_name="previsoes_ets.csv",
         mime="text/csv"
     )
+    
+    # Exibir link para carregar o modelo ETS
+    st.subheader('Modelo ETS Carregado')
+    model_loaded = load_ets_model()  # Carregar o modelo salvo
+    st.write("Modelo ETS carregado com sucesso!")
