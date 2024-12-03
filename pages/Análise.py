@@ -158,7 +158,7 @@ with st.container():
         [Notebook](https://colab.research.google.com/github/ISQRS00/dashboard_tc4/blob/main/TECH_CHALLENGE_FASE_4.ipynb)
                     
         Você pode baixar o dashboard interativo para análise no Power BI diretamente pelo link abaixo:
-        [Arquivo do Power BI](https://github.com/ISQRS00/dashboard_tc4/blob/main/TECH_CHALLENGE_FASE_4.ipynb)
+        [Arquivo do Power BI](https://github.com/ISQRS00/dashboard_tc4/blob/main/DASH_TECH_CHALLENGE_FASE_4.pbix)
                     
         """)
 
