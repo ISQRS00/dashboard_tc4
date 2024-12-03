@@ -17,7 +17,7 @@ def wmape(y_true, y_pred):
 # Carregar e preparar os dados (com cache)
 @st.cache_data
 def load_data():
-    df = pd.read_csv('https://raw.githubusercontent.com/ISQRS00/dashboard_tc4/main/barril.csv', sep=';')
+    df = pd.read_csv('https://drive.google.com/drive/folders/1kwFUP9H-71nAYtUJMZendUOui4CcWCk7?hl=pt-br', sep=';')
     df.drop(columns=['Unnamed: 2'], inplace=True)
     df.rename(columns={'Data': 'data', 'Preço - petróleo bruto - Brent (FOB) - US$ - Energy Information Administration (EIA) - EIA366_PBRENT366': 'realizado'}, inplace=True)
     df['data'] = pd.to_datetime(df['data'], format='%d/%m/%Y', dayfirst=True)
