@@ -81,7 +81,7 @@ dias_corte = st.number_input('Selecione o número de dias para o corte entre 7 e
 cut_date = df_barril_petroleo['data'].max() - timedelta(days=dias_corte)
 
 # Dividir em treino e validação
-train = df_barril_petroleo.loc[(df_barril_petroleo['data'] >= "2024-01-01") & (df_barril_petroleo['data'] < cut_date)]
+train = df_barril_petroleo.loc[(df_barril_petroleo['data'] >= "2022-01-01") & (df_barril_petroleo['data'] < cut_date)]
 valid = df_barril_petroleo.loc[df_barril_petroleo['data'] >= cut_date]
 
 # Exibir o tamanho dos conjuntos
