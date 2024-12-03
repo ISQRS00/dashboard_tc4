@@ -79,11 +79,20 @@ Escolha um número de dias para separar os dados de treino e validação. O mode
 dias_corte = st.number_input('Selecione o número de dias para o corte entre 7 e 90:', min_value=7, max_value=90, value=7)
 
 # Calcular a data de corte com base no número de dias
-cut_date = df_barril_petroleo['data'].iloc[-dias_corte]
+#cut_date = df_barril_petroleo['data'].iloc[-dias_corte]
 
 # Dividir em treino e validação
-train = df_barril_petroleo.loc[(df_barril_petroleo['data'] >= "2019-01-01") & (df_barril_petroleo['data'] < cut_date)]
-valid = df_barril_petroleo.loc[df_barril_petroleo['data'] >= cut_date]
+#train = df_barril_petroleo.loc[(df_barril_petroleo['data'] >= "2019-01-01") & (df_barril_petroleo['data'] < cut_date)]
+#valid = df_barril_petroleo.loc[df_barril_petroleo['data'] >= cut_date]
+
+# Ajustar a data de corte com base nos índices do DataFrame
+cut_date = df_barril_petroleo['data'].iloc[-dias_corte]
+
+# Conjunto de treino: registros antes da data de corte
+train = df_barril_petroleo[df_barril_petroleo['data'] < cut_date]
+
+# Conjunto de validação: registros a partir da data de corte
+valid = df_barril_petroleo[df_barril_petroleo['data'] >= cut_date]
 
 # Exibir o tamanho dos conjuntos
 st.write(f"A data inicial da validação: {cut_date.strftime('%d-%m-%Y')}")
