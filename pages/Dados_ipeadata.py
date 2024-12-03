@@ -14,6 +14,9 @@ import yfinance as yf
 from statsforecast import StatsForecast
 from plotly.subplots import make_subplots
 
+# Configurações do Streamlit
+st.set_page_config(page_title="Deploy | Tech Challenge 4 | FIAP", layout='wide')
+
 @st.cache_data
 def converte_csv(df):
     return df.to_csv(index=False).encode('utf-8')
