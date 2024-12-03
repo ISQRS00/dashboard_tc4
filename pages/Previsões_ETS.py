@@ -18,6 +18,21 @@ def train_ets_model(train_data):
     model_ets = sm.tsa.ExponentialSmoothing(train_data['realizado'], seasonal='mul', seasonal_periods=season_length).fit()
     return model_ets
 
+# Função para previsão com o modelo ETS
+@st.cache_data
+def forecast_ets(train, valid, model_ets):
+    forecast_ets = model_ets.forecast(len(valid))
+    forecast_dates = pd.date_range(start=train['data'].iloc[-1] + pd.Timedelta(days=1), periods=len(valid), freq='D')
+    ets_df = pd.DataFrame({'data': forecast_dates, 'previsão': forecast_ets})
+    ets_df = ets_df.merge(valid, on=['data'], how='inner')
+
+    wmape_ets = wmape(ets_df['realizado'].values, ets_df['previsão'].values)
+    MAE_ets = mean_absolute_error(ets_df['realizado'].values, ets_df['previsão'].values)
+    MSE_ets = mean_squared_error(ets_df['realizado'].values, ets_df['previsão'].values)
+    R2_ets = r2_score(ets_df['realizado'].values, ets_df['previsão'].values)
+    
+    return ets_df, wmape_ets, MAE_ets, MSE_ets, R2_ets
+
 # Configurações do Streamlit
 st.set_page_config(page_title="Deploy | Tech Challenge 4 | FIAP", layout='wide')
 
@@ -65,25 +80,10 @@ valid = df_barril_petroleo.loc[df_barril_petroleo['data'] >= cut_date]
 # Treinando o modelo ETS com dados de treino
 model_ets = train_ets_model(train)
 
-# Função para previsão com o modelo ETS
-def forecast_ets(train, valid):
-    season_length = 252  # Sazonalidade anual
-    model_ets = sm.tsa.ExponentialSmoothing(train['realizado'], seasonal='mul', seasonal_periods=season_length).fit()
-    forecast_ets = model_ets.forecast(len(valid))
-    forecast_dates = pd.date_range(start=train['data'].iloc[-1] + pd.Timedelta(days=1), periods=len(valid), freq='D')
-    ets_df = pd.DataFrame({'data': forecast_dates, 'previsão': forecast_ets})
-    ets_df = ets_df.merge(valid, on=['data'], how='inner')
-
-    wmape_ets = wmape(ets_df['realizado'].values, ets_df['previsão'].values)
-    MAE_ets = mean_absolute_error(ets_df['realizado'].values, ets_df['previsão'].values)
-    MSE_ets = mean_squared_error(ets_df['realizado'].values, ets_df['previsão'].values)
-    R2_ets = r2_score(ets_df['realizado'].values, ets_df['previsão'].values)
-    
-    return ets_df, wmape_ets, MAE_ets, MSE_ets, R2_ets
+# Previsão com o modelo ETS
+ets_df, wmape_ets, MAE_ets, MSE_ets, R2_ets = forecast_ets(train, valid, model_ets)
 
 # Exibição das métricas de desempenho
-ets_df, wmape_ets, MAE_ets, MSE_ets, R2_ets = forecast_ets(train, valid)
-
 st.subheader('Métricas de Desempenho do Modelo ETS')
 st.write(f'WMAPE: {wmape_ets:.2%}')
 st.write(f'MAE: {MAE_ets:.3f}')
