@@ -35,6 +35,7 @@ def train_ets_model(train_data, season_length=252):
 st.set_page_config(page_title="Deploy | Tech Challenge 4 | FIAP", layout='wide')
 
 # Carregar e preparar os dados (sem cache)
+@st.cache_data 
 def load_data():
     df = pd.read_csv('https://raw.githubusercontent.com/ISQRS00/dashboard_tc4/main/barril.csv', sep=';')
     df.drop(columns=['Unnamed: 2'], inplace=True)
@@ -80,11 +81,14 @@ valid = df_barril_petroleo.loc[df_barril_petroleo['data'] >= cut_date]
 
 # Treinando o modelo ETS com dados de treino (apenas uma vez)
 model_ets = train_ets_model(train)
-
+ # model_ets adicionado
+    # ...
+    f
+    # ...
 # Função para previsão com o modelo ETS (agora reutiliza o modelo treinado)
-def forecast_ets(train, valid, model_ets):
+def forecast_ets(model_ets, valid):
     forecast_ets = model_ets.forecast(len(valid))
-    forecast_dates = pd.date_range(start=train['data'].iloc[-1] + pd.Timedelta(days=1), periods=len(valid), freq='D')
+    orecast_dates = pd.date_range(start=valid['data'].min() - timedelta(days=1), periods=len(valid), freq='D') # modificação na geração de datas
     ets_df = pd.DataFrame({'data': forecast_dates, 'previsão': forecast_ets})
     ets_df = ets_df.merge(valid, on=['data'], how='inner')
 
@@ -96,8 +100,7 @@ def forecast_ets(train, valid, model_ets):
     return ets_df, wmape_ets, MAE_ets, MSE_ets, R2_ets
 
 # Exibição das métricas de desempenho
-ets_df, wmape_ets, MAE_ets, MSE_ets, R2_ets = forecast_ets(train, valid, model_ets)
-
+ets_df, wmape_ets, MAE_ets, MSE_ets, R2_ets = forecast_ets(model_ets, valid)
 st.subheader('Métricas de Desempenho do Modelo ETS')
 st.write(f'WMAPE: {wmape_ets:.2%}')
 st.write(f'MAE: {MAE_ets:.3f}')
