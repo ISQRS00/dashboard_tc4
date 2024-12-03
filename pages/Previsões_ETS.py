@@ -22,34 +22,49 @@ def wmape(y_true, y_pred):
 # Carregar e preparar os dados (com cache)
 @st.cache_data
 def load_data():
-    df = pd.read_csv('https://raw.githubusercontent.com/ISQRS00/dashboard_tc4/main/barril.csv', sep=';')
-    df.drop(columns=['Unnamed: 2'], inplace=True)
-    df.rename(columns={'Data': 'data', 'Preço - petróleo bruto - Brent (FOB) - US$ - Energy Information Administration (EIA) - EIA366_PBRENT366': 'realizado'}, inplace=True)
-    df['data'] = pd.to_datetime(df['data'], format='%d/%m/%Y', dayfirst=True)
-    df['realizado'] = df['realizado'].str.replace(',', '.').astype(float)
-    df['realizado'] = df['realizado'].ffill()  # Preencher valores ausentes
-    return df
+    try:
+        df = pd.read_csv('https://raw.githubusercontent.com/ISQRS00/dashboard_tc4/main/barril.csv', sep=';')
+        df.drop(columns=['Unnamed: 2'], inplace=True)
+        df.rename(columns={'Data': 'data', 'Preço - petróleo bruto - Brent (FOB) - US$ - Energy Information Administration (EIA) - EIA366_PBRENT366': 'realizado'}, inplace=True)
+        df['data'] = pd.to_datetime(df['data'], format='%d/%m/%Y', dayfirst=True)  # Corrige o formato da data
+        df['realizado'] = df['realizado'].str.replace(',', '.').astype(float)
+        df['realizado'] = df['realizado'].ffill()  # Preencher valores ausentes
+        return df
+    except Exception as e:
+        st.error(f"Erro ao carregar os dados: {e}")
+        return pd.DataFrame()  # Retorna dataframe vazio em caso de erro
 
-# Função para treinar o modelo ETS (utilizar cache de recursos)
+# Função para treinar o modelo ETS (utilizando cache de recursos)
 @st.cache_resource
 def train_ets_model(train_data, season_length=252):
-    model_ets = sm.tsa.ExponentialSmoothing(train_data['realizado'], seasonal='mul', seasonal_periods=season_length).fit()
-    return model_ets
+    try:
+        st.write("Iniciando o treinamento do modelo ETS...")
+        model_ets = sm.tsa.ExponentialSmoothing(train_data['realizado'], seasonal='mul', seasonal_periods=season_length).fit()
+        st.write("Modelo ETS treinado com sucesso!")
+        return model_ets
+    except Exception as e:
+        st.error(f"Erro ao treinar o modelo ETS: {e}")
+        return None
 
 # Função para previsão com o modelo ETS
 @st.cache_data
 def forecast_ets(train, valid, model_ets):
-    forecast_ets = model_ets.forecast(len(valid))
-    forecast_dates = pd.date_range(start=train['data'].iloc[-1] + pd.Timedelta(days=1), periods=len(valid), freq='D')
-    ets_df = pd.DataFrame({'data': forecast_dates, 'previsão': forecast_ets})
-    ets_df = ets_df.merge(valid, on=['data'], how='inner')
+    try:
+        st.write("Gerando previsões...")
+        forecast_ets = model_ets.forecast(len(valid))
+        forecast_dates = pd.date_range(start=train['data'].iloc[-1] + pd.Timedelta(days=1), periods=len(valid), freq='D')
+        ets_df = pd.DataFrame({'data': forecast_dates, 'previsão': forecast_ets})
+        ets_df = ets_df.merge(valid, on=['data'], how='inner')
 
-    wmape_ets = wmape(ets_df['realizado'].values, ets_df['previsão'].values)
-    MAE_ets = mean_absolute_error(ets_df['realizado'].values, ets_df['previsão'].values)
-    MSE_ets = mean_squared_error(ets_df['realizado'].values, ets_df['previsão'].values)
-    R2_ets = r2_score(ets_df['realizado'].values, ets_df['previsão'].values)
+        wmape_ets = wmape(ets_df['realizado'].values, ets_df['previsão'].values)
+        MAE_ets = mean_absolute_error(ets_df['realizado'].values, ets_df['previsão'].values)
+        MSE_ets = mean_squared_error(ets_df['realizado'].values, ets_df['previsão'].values)
+        R2_ets = r2_score(ets_df['realizado'].values, ets_df['previsão'].values)
 
-    return ets_df, wmape_ets, MAE_ets, MSE_ets, R2_ets
+        return ets_df, wmape_ets, MAE_ets, MSE_ets, R2_ets
+    except Exception as e:
+        st.error(f"Erro ao gerar previsões com o modelo ETS: {e}")
+        return pd.DataFrame(), 0, 0, 0, 0
 
 # Carregar dados
 df_barril_petroleo = load_data()
@@ -77,34 +92,37 @@ model_ets = train_ets_model(train)
 
 # Forecast ETS
 if st.button("Gerar Previsão"):
-    ets_df, wmape_ets, MAE_ets, MSE_ets, R2_ets = forecast_ets(train, valid, model_ets)
+    if model_ets:  # Verifica se o modelo foi treinado corretamente
+        ets_df, wmape_ets, MAE_ets, MSE_ets, R2_ets = forecast_ets(train, valid, model_ets)
 
-    st.subheader('Métricas de Desempenho do Modelo ETS')
-    st.write(f'WMAPE: {wmape_ets:.2%}')
-    st.write(f'MAE: {MAE_ets:.3f}')
-    st.write(f'MSE: {MSE_ets:.4f}')
-    st.write(f'R²: {R2_ets:.2f}')
+        st.subheader('Métricas de Desempenho do Modelo ETS')
+        st.write(f'WMAPE: {wmape_ets:.2%}')
+        st.write(f'MAE: {MAE_ets:.3f}')
+        st.write(f'MSE: {MSE_ets:.4f}')
+        st.write(f'R²: {R2_ets:.2f}')
 
-    # Criar gráfico ETS
-    fig_ets = go.Figure()
-    fig_ets.add_trace(go.Scatter(x=valid['data'], y=valid['realizado'], mode='lines', name='Realizado'))
-    fig_ets.add_trace(go.Scatter(x=ets_df['data'], y=ets_df['previsão'], mode='lines', name='Forecast'))
-    fig_ets.update_layout(
-        title="Previsão do Modelo ETS",
-        xaxis_title="Data",
-        yaxis_title="Valor do Petróleo (US$)",
-        xaxis=dict(tickformat="%d-%m-%Y", tickangle=45),
-        yaxis=dict(title="Valor (US$)", tickformat=".3f"),
-        autosize=True
-    )
-    st.plotly_chart(fig_ets, use_container_width=True)
+        # Criar gráfico ETS
+        fig_ets = go.Figure()
+        fig_ets.add_trace(go.Scatter(x=valid['data'], y=valid['realizado'], mode='lines', name='Realizado'))
+        fig_ets.add_trace(go.Scatter(x=ets_df['data'], y=ets_df['previsão'], mode='lines', name='Forecast'))
+        fig_ets.update_layout(
+            title="Previsão do Modelo ETS",
+            xaxis_title="Data",
+            yaxis_title="Valor do Petróleo (US$)",
+            xaxis=dict(tickformat="%d-%m-%Y", tickangle=45),
+            yaxis=dict(title="Valor (US$)", tickformat=".3f"),
+            autosize=True
+        )
+        st.plotly_chart(fig_ets, use_container_width=True)
 
-    # Opção de Download dos Resultados
-    st.subheader('Baixar Resultados')
-    csv = ets_df.to_csv(index=False)
-    st.download_button(
-        label="Baixar Previsões ETS",
-        data=csv,
-        file_name="previsoes_ets.csv",
-        mime="text/csv"
-    )
+        # Opção de Download dos Resultados
+        st.subheader('Baixar Resultados')
+        csv = ets_df.to_csv(index=False)
+        st.download_button(
+            label="Baixar Previsões ETS",
+            data=csv,
+            file_name="previsoes_ets.csv",
+            mime="text/csv"
+        )
+    else:
+        st.error("O modelo não foi treinado corretamente. Tente novamente.")
