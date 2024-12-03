@@ -87,8 +87,7 @@ valid = df_barril_petroleo.loc[df_barril_petroleo['data'] >= cut_date]
 
 # Exibir o tamanho dos conjuntos
 st.write(f"A data inicial da validação: {cut_date.strftime('%d-%m-%Y')}")
-st.write(f"Tamanho do conjunto de treino: {len(train)} dias")
-st.write(f"Tamanho do conjunto de validação: {len(valid)} dias")
+
 
 # Criar uma barra de progresso
 progress = st.progress(0)
