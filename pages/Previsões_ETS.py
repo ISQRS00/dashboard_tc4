@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 from datetime import timedelta
 import statsmodels.api as sm
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+import time
 
 # Configurações do Streamlit
 st.set_page_config(page_title="Deploy | Tech Challenge 4 | FIAP", layout='wide')
@@ -17,8 +18,8 @@ def wmape(y_true, y_pred):
 # Carregar e preparar os dados (com cache)
 @st.cache_data
 def load_data():
-    df = pd.read_csv('https://raw.githubusercontent.com/ISQRS00/dashboard_tc4/main/barril.csv', sep=';')
-    df.drop(columns=['Unnamed: 2'], inplace=True)
+    df = pd.read_csv('https://raw.githubusercontent.com/ISQRS00/dashboard_tc4/main/barril.csv', sep=';', 
+                     usecols=['Data', 'Preço - petróleo bruto - Brent (FOB) - US$ - Energy Information Administration (EIA) - EIA366_PBRENT366'])
     df.rename(columns={'Data': 'data', 'Preço - petróleo bruto - Brent (FOB) - US$ - Energy Information Administration (EIA) - EIA366_PBRENT366': 'realizado'}, inplace=True)
     df['data'] = pd.to_datetime(df['data'], format='%d/%m/%Y', dayfirst=True)
     df['realizado'] = df['realizado'].str.replace(',', '.').astype(float)
@@ -33,7 +34,7 @@ def train_ets_model(train_data, season_length=252):
 
 # Função para previsão com o modelo ETS
 @st.cache_data
-def forecast_ets(train, valid, _model_ets):  # Modificado para _model_ets
+def forecast_ets(train, valid, _model_ets):
     forecast_ets = _model_ets.forecast(len(valid))
     forecast_dates = pd.date_range(start=train['data'].iloc[-1] + pd.Timedelta(days=1), periods=len(valid), freq='D')
     ets_df = pd.DataFrame({'data': forecast_dates, 'previsão': forecast_ets})
@@ -79,6 +80,7 @@ progress = st.progress(0)
 if st.button("Gerar Previsão"):
     # Atualizar barra de progresso para indicar que o treinamento está em andamento
     for i in range(100):
+        time.sleep(0.01)  # Pequeno atraso para permitir atualização da barra
         progress.progress(i + 1)
     
     # Treinar o modelo
@@ -116,3 +118,4 @@ if st.button("Gerar Previsão"):
         file_name="previsoes_ets.csv",
         mime="text/csv"
     )
+
