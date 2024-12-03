@@ -1,16 +1,10 @@
 import streamlit as st
-import requests
-from PIL import Image
-from io import BytesIO
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-from datetime import date, timedelta
-from sklearn.metrics import accuracy_score, r2_score, mean_absolute_error, mean_squared_error
+from datetime import timedelta
 import statsmodels.api as sm
-import yfinance as yf
-from statsmodels.tsa.seasonal import seasonal_decompose
-import time
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 # Configurações do Streamlit
 st.set_page_config(page_title="Deploy | Tech Challenge 4 | FIAP", layout='wide')
@@ -26,48 +20,33 @@ def load_data():
     df = pd.read_csv('https://raw.githubusercontent.com/ISQRS00/dashboard_tc4/main/barril.csv', sep=';')
     df.drop(columns=['Unnamed: 2'], inplace=True)
     df.rename(columns={'Data': 'data', 'Preço - petróleo bruto - Brent (FOB) - US$ - Energy Information Administration (EIA) - EIA366_PBRENT366': 'realizado'}, inplace=True)
-    df['data'] = pd.to_datetime(df['data'], format='%d/%m/%Y', dayfirst=True)  # Corrige o formato da data
+    df['data'] = pd.to_datetime(df['data'], format='%d/%m/%Y', dayfirst=True)
     df['realizado'] = df['realizado'].str.replace(',', '.').astype(float)
     df['realizado'] = df['realizado'].ffill()  # Preencher valores ausentes
     return df
 
-# Função para treinar o modelo ETS (utilizando cache de recursos)
+# Função para treinar o modelo ETS (utilizar cache de recursos)
 @st.cache_resource
 def train_ets_model(train_data, season_length=252):
-    try:
-        st.write("Iniciando o treinamento do modelo ETS...")
-        start_time = time.time()  # Marca o tempo de início
-        model_ets = sm.tsa.ExponentialSmoothing(train_data['realizado'], seasonal='mul', seasonal_periods=season_length).fit()
-        end_time = time.time()  # Marca o tempo de término
-        st.write(f"Modelo ETS treinado com sucesso! Tempo de treinamento: {end_time - start_time:.2f} segundos.")
-        return model_ets
-    except Exception as e:
-        st.error(f"Erro ao treinar o modelo ETS: {e}")
-        return None
+    st.write("Treinando o modelo ETS...")
+    model_ets = sm.tsa.ExponentialSmoothing(train_data['realizado'], seasonal='mul', seasonal_periods=season_length).fit()
+    return model_ets
 
 # Função para previsão com o modelo ETS
 @st.cache_data
 def forecast_ets(train, valid, _model_ets):
-    try:
-        st.write("Gerando previsões...")
-        start_time = time.time()  # Marca o tempo de início
-        forecast_ets = model_ets.forecast(len(valid))
-        forecast_dates = pd.date_range(start=train['data'].iloc[-1] + pd.Timedelta(days=1), periods=len(valid), freq='D')
-        ets_df = pd.DataFrame({'data': forecast_dates, 'previsão': forecast_ets})
-        ets_df = ets_df.merge(valid, on=['data'], how='inner')
+    st.write("Gerando previsões...")
+    forecast_ets = _model_ets.forecast(len(valid))  # Usando o parâmetro com o underscore
+    forecast_dates = pd.date_range(start=train['data'].iloc[-1] + pd.Timedelta(days=1), periods=len(valid), freq='D')
+    ets_df = pd.DataFrame({'data': forecast_dates, 'previsão': forecast_ets})
+    ets_df = ets_df.merge(valid, on=['data'], how='inner')
 
-        wmape_ets = wmape(ets_df['realizado'].values, ets_df['previsão'].values)
-        MAE_ets = mean_absolute_error(ets_df['realizado'].values, ets_df['previsão'].values)
-        MSE_ets = mean_squared_error(ets_df['realizado'].values, ets_df['previsão'].values)
-        R2_ets = r2_score(ets_df['realizado'].values, ets_df['previsão'].values)
-        
-        end_time = time.time()  # Marca o tempo de término
-        st.write(f"Previsões geradas com sucesso! Tempo de previsão: {end_time - start_time:.2f} segundos.")
-        
-        return ets_df, wmape_ets, MAE_ets, MSE_ets, R2_ets
-    except Exception as e:
-        st.error(f"Erro ao gerar previsões com o modelo ETS: {e}")
-        return pd.DataFrame(), 0, 0, 0, 0
+    wmape_ets = wmape(ets_df['realizado'].values, ets_df['previsão'].values)
+    MAE_ets = mean_absolute_error(ets_df['realizado'].values, ets_df['previsão'].values)
+    MSE_ets = mean_squared_error(ets_df['realizado'].values, ets_df['previsão'].values)
+    R2_ets = r2_score(ets_df['realizado'].values, ets_df['previsão'].values)
+
+    return ets_df, wmape_ets, MAE_ets, MSE_ets, R2_ets
 
 # Carregar dados
 df_barril_petroleo = load_data()
@@ -85,47 +64,49 @@ dias_corte = st.number_input('Selecione o número de dias para o corte entre 7 e
 
 # Calcular a data de corte com base no número de dias
 cut_date = df_barril_petroleo['data'].max() - timedelta(days=dias_corte)
+st.write(f"A data de corte é: {cut_date}")
 
 # Dividir em treino e validação
 train = df_barril_petroleo.loc[df_barril_petroleo['data'] < cut_date]
 valid = df_barril_petroleo.loc[df_barril_petroleo['data'] >= cut_date]
+
+# Verificar tamanhos dos conjuntos de treino e validação
+st.write(f"Tamanho do conjunto de treino: {len(train)}")
+st.write(f"Tamanho do conjunto de validação: {len(valid)}")
 
 # Treinar o modelo ETS
 model_ets = train_ets_model(train)
 
 # Forecast ETS
 if st.button("Gerar Previsão"):
-    if model_ets:  # Verifica se o modelo foi treinado corretamente
-        ets_df, wmape_ets, MAE_ets, MSE_ets, R2_ets = forecast_ets(train, valid, model_ets)
+    ets_df, wmape_ets, MAE_ets, MSE_ets, R2_ets = forecast_ets(train, valid, model_ets)
 
-        st.subheader('Métricas de Desempenho do Modelo ETS')
-        st.write(f'WMAPE: {wmape_ets:.2%}')
-        st.write(f'MAE: {MAE_ets:.3f}')
-        st.write(f'MSE: {MSE_ets:.4f}')
-        st.write(f'R²: {R2_ets:.2f}')
+    st.subheader('Métricas de Desempenho do Modelo ETS')
+    st.write(f'WMAPE: {wmape_ets:.2%}')
+    st.write(f'MAE: {MAE_ets:.3f}')
+    st.write(f'MSE: {MSE_ets:.4f}')
+    st.write(f'R²: {R2_ets:.2f}')
 
-        # Criar gráfico ETS
-        fig_ets = go.Figure()
-        fig_ets.add_trace(go.Scatter(x=valid['data'], y=valid['realizado'], mode='lines', name='Realizado'))
-        fig_ets.add_trace(go.Scatter(x=ets_df['data'], y=ets_df['previsão'], mode='lines', name='Forecast'))
-        fig_ets.update_layout(
-            title="Previsão do Modelo ETS",
-            xaxis_title="Data",
-            yaxis_title="Valor do Petróleo (US$)",
-            xaxis=dict(tickformat="%d-%m-%Y", tickangle=45),
-            yaxis=dict(title="Valor (US$)", tickformat=".3f"),
-            autosize=True
-        )
-        st.plotly_chart(fig_ets, use_container_width=True)
+    # Criar gráfico ETS
+    fig_ets = go.Figure()
+    fig_ets.add_trace(go.Scatter(x=valid['data'], y=valid['realizado'], mode='lines', name='Realizado'))
+    fig_ets.add_trace(go.Scatter(x=ets_df['data'], y=ets_df['previsão'], mode='lines', name='Forecast'))
+    fig_ets.update_layout(
+        title="Previsão do Modelo ETS",
+        xaxis_title="Data",
+        yaxis_title="Valor do Petróleo (US$)",
+        xaxis=dict(tickformat="%d-%m-%Y", tickangle=45),
+        yaxis=dict(title="Valor (US$)", tickformat=".3f"),
+        autosize=True
+    )
+    st.plotly_chart(fig_ets, use_container_width=True)
 
-        # Opção de Download dos Resultados
-        st.subheader('Baixar Resultados')
-        csv = ets_df.to_csv(index=False)
-        st.download_button(
-            label="Baixar Previsões ETS",
-            data=csv,
-            file_name="previsoes_ets.csv",
-            mime="text/csv"
-        )
-    else:
-        st.error("O modelo não foi treinado corretamente. Tente novamente.")
+    # Opção de Download dos Resultados
+    st.subheader('Baixar Resultados')
+    csv = ets_df.to_csv(index=False)
+    st.download_button(
+        label="Baixar Previsões ETS",
+        data=csv,
+        file_name="previsoes_ets.csv",
+        mime="text/csv"
+    )
