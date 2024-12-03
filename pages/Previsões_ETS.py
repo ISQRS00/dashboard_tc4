@@ -19,22 +19,16 @@ def wmape(y_true, y_pred):
 
 # Função para treinar o modelo ETS (treinamento otimizado)
 def train_ets_model(train_data, season_length=252):
-    try: #Tenta com sazonalidade multiplicativa
-        model_ets = sm.tsa.ExponentialSmoothing(
-            train_data['realizado'],
-            seasonal='mul',
-            seasonal_periods=season_length
-        ).fit()
-    except ConvergenceWarning:
-        try: #Tenta com sazonalidade aditiva
-            model_ets = sm.tsa.ExponentialSmoothing(
-                train_data['realizado'],
-                seasonal='add',
-                seasonal_periods=min(season_length, len(train_data)//2) #reduzindo a complexidade
-            ).fit()
-        except ConvergenceWarning:
-            st.warning("O modelo não convergiu. Tente uma data de corte diferente.")
-            return None #Retorna None se não convergir em nenhuma tentativa.
+    # Garantir que o valor de season_length seja maior que 1
+    if season_length <= 1:
+        season_length = 2  # Definir como 2 para garantir a sazonalidade
+    if len(train_data) < season_length * 2:
+        season_length = max(2, len(train_data) // 2)  # Garantir que seja maior que 1
+    model_ets = sm.tsa.ExponentialSmoothing(
+        train_data['realizado'], 
+        seasonal='mul', 
+        seasonal_periods=season_length
+    ).fit()
     return model_ets
 
 # Configurações do Streamlit
