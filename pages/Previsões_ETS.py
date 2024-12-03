@@ -57,19 +57,20 @@ df_barril_petroleo = load_data()
 st.write("""
 ### Como Funciona a Divisão dos Dados?
 
-O modelo de previsão ETS foi treinado com dados históricos do preço do petróleo, divididos em duas partes:
+O modelo de previsão ETS é treinado com dados históricos do preço do petróleo, divididos em duas partes:
 
 - **Dados de Treinamento**: Usados para treinar o modelo e identificar padrões históricos.
 - **Dados de Validação**: Usados para testar a precisão do modelo, comparando as previsões com os valores reais.
 
 ### Por que um intervalo de treino menor?
 
-Para garantir que o Streamlit funcione de forma rápida e eficiente, optamos por usar um intervalo de dados de treino mais curto. Isso evita que o processo de treinamento se torne muito pesado, especialmente para períodos mais longos, enquanto ainda mantemos a precisão do modelo.
+Para garantir que o Streamlit funcione de forma rápida e eficiente, optamos por usar um intervalo de dados de treino mais curto. Isso evita que o processo de treinamento se torne muito pesado, especialmente para períodos mais longos, enquanto ainda mantemos a precisão do modelo. Vale ressaltar que os dados analítico estão disponíveis no Power BI, e a amostra utilizada para o treinamento do modelo é uma parte dos dados históricos, selecionada para análise mais rápida e eficiente.
 
 ### Como isso funciona?
 
 Escolha o número de dias para a **separação** entre o treino e a validação e veja como o modelo se comporta com diferentes períodos.
 """)
+
 
 
 
