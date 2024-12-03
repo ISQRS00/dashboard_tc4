@@ -65,7 +65,10 @@ dias_corte = st.number_input('Selecione o número de dias para o corte entre 7 e
 cut_date = df_barril_petroleo['data'].max() - timedelta(days=dias_corte)
 
 # Dividir em treino e validação
-train = df_barril_petroleo.loc[df_barril_petroleo['data'] < cut_date]
+parametro = pd.Timestamp('2025-12-31')  # Exemplo de valor para o parâmetro
+train = df_barril_petroleo.loc[(df_barril_petroleo['data'] < cut_date) & 
+                               (df_barril_petroleo['data'].dt.year > 2024) & 
+                               (df_barril_petroleo['data'] < parametro)]
 valid = df_barril_petroleo.loc[df_barril_petroleo['data'] >= cut_date]
 
 # Exibir o tamanho dos conjuntos
@@ -79,15 +82,16 @@ progress = st.progress(0)
 # Treinar o modelo ETS
 if st.button("Gerar Previsão"):
     # Atualizar barra de progresso para indicar que o treinamento está em andamento
-    for i in range(100):
-        time.sleep(0.01)  # Pequeno atraso para permitir atualização da barra
-        progress.progress(i + 1)
+    progress.progress(0)
+    time.sleep(0.5)  # Adicione um pequeno atraso para permitir atualização da barra
     
     # Treinar o modelo
     model_ets = train_ets_model(train)
+    progress.progress(50)
     
     # Prever com o modelo ETS
     ets_df, wmape_ets, MAE_ets, MSE_ets, R2_ets = forecast_ets(train, valid, model_ets)
+    progress.progress(100)
 
     st.subheader('Métricas de Desempenho do Modelo ETS')
     st.write(f'WMAPE: {wmape_ets:.2%}')
@@ -118,4 +122,3 @@ if st.button("Gerar Previsão"):
         file_name="previsoes_ets.csv",
         mime="text/csv"
     )
-
