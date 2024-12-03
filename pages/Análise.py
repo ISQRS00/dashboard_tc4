@@ -20,7 +20,7 @@ def load_image(url):
     response = requests.get(url)
     return Image.open(BytesIO(response.content))
 # Configuração para a página em modo wide
-#st.set_page_config(page_title="Dashboard de Previsões de Preço de Petróleo", layout='wide')
+st.set_page_config(page_title="Dashboard de Previsões de Preço de Petróleo", layout='wide')
 # Dicionário com informações dos insights
 insights = [
     {
