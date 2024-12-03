@@ -47,7 +47,7 @@ def train_ets_model(train_data, season_length=252):
 
 # Função para previsão com o modelo ETS
 @st.cache_data
-def forecast_ets(train, valid, model_ets):
+def forecast_ets(train, valid, _model_ets):
     try:
         st.write("Gerando previsões...")
         start_time = time.time()  # Marca o tempo de início
