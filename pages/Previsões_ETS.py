@@ -55,11 +55,23 @@ df_barril_petroleo = load_data()
 
 # Explicação sobre o corte de dados
 st.write("""
-### Como Funciona o Corte dos Dados?
+### Como Funciona a Divisão dos Dados?
 
-O modelo de previsão ETS é treinado com base em dados históricos do preço do petróleo. 
-Escolha o número de dias para o corte e veja como o modelo se comporta para diferentes períodos.
+O modelo de previsão ETS foi treinado com dados históricos do preço do petróleo, divididos em duas partes:
+
+- **Dados de Treinamento**: Usados para treinar o modelo e identificar padrões históricos.
+- **Dados de Validação**: Usados para testar a precisão do modelo, comparando as previsões com os valores reais.
+
+### Por que um intervalo de treino menor?
+
+Para garantir que o Streamlit funcione de forma rápida e eficiente, optamos por usar um intervalo de dados de treino mais curto. Isso evita que o processo de treinamento se torne muito pesado, especialmente para períodos mais longos, enquanto ainda mantemos a precisão do modelo.
+
+### Como isso funciona?
+
+Escolha o número de dias para a **separação** entre o treino e a validação e veja como o modelo se comporta com diferentes períodos.
 """)
+
+
 
 # Input para o número de dias para corte
 dias_corte = st.number_input('Selecione o número de dias para o corte entre 7 e 90:', min_value=7, max_value=90, value=7)
@@ -72,9 +84,9 @@ train = df_barril_petroleo.loc[(df_barril_petroleo['data'] >= "2022-01-01") & (d
 valid = df_barril_petroleo.loc[df_barril_petroleo['data'] >= cut_date]
 
 # Exibir o tamanho dos conjuntos
-st.write(f"A data de corte é: {cut_date}")
-st.write(f"Tamanho do conjunto de treino: {len(train)}")
-st.write(f"Tamanho do conjunto de validação: {len(valid)}")
+st.write(f"A data inicial da validação: {cut_date.strftime('%d-%m-%Y')}")
+st.write(f"Tamanho do conjunto de treino: {len(train)} dias")
+st.write(f"Tamanho do conjunto de validação: {len(valid)} dias")
 
 # Criar uma barra de progresso
 progress = st.progress(0)
