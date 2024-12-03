@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 from datetime import timedelta
 import statsmodels.api as sm
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+import os
 
 # Configurações do Streamlit
 st.set_page_config(page_title="Deploy | Tech Challenge 4 | FIAP", layout='wide')
