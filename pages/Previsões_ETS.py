@@ -83,7 +83,7 @@ valid = df_barril_petroleo.loc[df_barril_petroleo['data'] >= cut_date]
 model_ets = train_ets_model(train)
  # model_ets adicionado
     # ...
-    f
+   
     # ...
 # Função para previsão com o modelo ETS (agora reutiliza o modelo treinado)
 def forecast_ets(model_ets, valid):
