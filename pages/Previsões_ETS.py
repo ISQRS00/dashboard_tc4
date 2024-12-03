@@ -27,7 +27,8 @@ def train_ets_model(train_data, season_length=252):
     model_ets = sm.tsa.ExponentialSmoothing(
         train_data['realizado'], 
         seasonal='mul', 
-        seasonal_periods=season_length
+        seasonal_periods=season_length,
+        initialization_method='estimated'
     ).fit()
     return model_ets
 
