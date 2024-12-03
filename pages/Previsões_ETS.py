@@ -10,6 +10,7 @@ from sklearn.metrics import accuracy_score, r2_score, mean_absolute_error, mean_
 import statsmodels.api as sm
 import yfinance as yf
 from statsmodels.tsa.seasonal import seasonal_decompose
+import time
 
 # Configurações do Streamlit
 st.set_page_config(page_title="Deploy | Tech Challenge 4 | FIAP", layout='wide')
@@ -22,25 +23,23 @@ def wmape(y_true, y_pred):
 # Carregar e preparar os dados (com cache)
 @st.cache_data
 def load_data():
-    try:
-        df = pd.read_csv('https://raw.githubusercontent.com/ISQRS00/dashboard_tc4/main/barril.csv', sep=';')
-        df.drop(columns=['Unnamed: 2'], inplace=True)
-        df.rename(columns={'Data': 'data', 'Preço - petróleo bruto - Brent (FOB) - US$ - Energy Information Administration (EIA) - EIA366_PBRENT366': 'realizado'}, inplace=True)
-        df['data'] = pd.to_datetime(df['data'], format='%d/%m/%Y', dayfirst=True)  # Corrige o formato da data
-        df['realizado'] = df['realizado'].str.replace(',', '.').astype(float)
-        df['realizado'] = df['realizado'].ffill()  # Preencher valores ausentes
-        return df
-    except Exception as e:
-        st.error(f"Erro ao carregar os dados: {e}")
-        return pd.DataFrame()  # Retorna dataframe vazio em caso de erro
+    df = pd.read_csv('https://raw.githubusercontent.com/ISQRS00/dashboard_tc4/main/barril.csv', sep=';')
+    df.drop(columns=['Unnamed: 2'], inplace=True)
+    df.rename(columns={'Data': 'data', 'Preço - petróleo bruto - Brent (FOB) - US$ - Energy Information Administration (EIA) - EIA366_PBRENT366': 'realizado'}, inplace=True)
+    df['data'] = pd.to_datetime(df['data'], format='%d/%m/%Y', dayfirst=True)  # Corrige o formato da data
+    df['realizado'] = df['realizado'].str.replace(',', '.').astype(float)
+    df['realizado'] = df['realizado'].ffill()  # Preencher valores ausentes
+    return df
 
 # Função para treinar o modelo ETS (utilizando cache de recursos)
 @st.cache_resource
 def train_ets_model(train_data, season_length=252):
     try:
         st.write("Iniciando o treinamento do modelo ETS...")
+        start_time = time.time()  # Marca o tempo de início
         model_ets = sm.tsa.ExponentialSmoothing(train_data['realizado'], seasonal='mul', seasonal_periods=season_length).fit()
-        st.write("Modelo ETS treinado com sucesso!")
+        end_time = time.time()  # Marca o tempo de término
+        st.write(f"Modelo ETS treinado com sucesso! Tempo de treinamento: {end_time - start_time:.2f} segundos.")
         return model_ets
     except Exception as e:
         st.error(f"Erro ao treinar o modelo ETS: {e}")
@@ -51,6 +50,7 @@ def train_ets_model(train_data, season_length=252):
 def forecast_ets(train, valid, model_ets):
     try:
         st.write("Gerando previsões...")
+        start_time = time.time()  # Marca o tempo de início
         forecast_ets = model_ets.forecast(len(valid))
         forecast_dates = pd.date_range(start=train['data'].iloc[-1] + pd.Timedelta(days=1), periods=len(valid), freq='D')
         ets_df = pd.DataFrame({'data': forecast_dates, 'previsão': forecast_ets})
@@ -60,7 +60,10 @@ def forecast_ets(train, valid, model_ets):
         MAE_ets = mean_absolute_error(ets_df['realizado'].values, ets_df['previsão'].values)
         MSE_ets = mean_squared_error(ets_df['realizado'].values, ets_df['previsão'].values)
         R2_ets = r2_score(ets_df['realizado'].values, ets_df['previsão'].values)
-
+        
+        end_time = time.time()  # Marca o tempo de término
+        st.write(f"Previsões geradas com sucesso! Tempo de previsão: {end_time - start_time:.2f} segundos.")
+        
         return ets_df, wmape_ets, MAE_ets, MSE_ets, R2_ets
     except Exception as e:
         st.error(f"Erro ao gerar previsões com o modelo ETS: {e}")
