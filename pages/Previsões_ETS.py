@@ -5,6 +5,8 @@ import plotly.graph_objects as go
 from datetime import timedelta
 import statsmodels.api as sm
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+import joblib
+import os
 
 # Configurações do Streamlit
 st.set_page_config(page_title="Deploy | Tech Challenge 4 | FIAP", layout='wide')
@@ -29,7 +31,18 @@ def load_data():
 @st.cache_resource
 def train_ets_model(train_data, season_length=252):
     model_ets = sm.tsa.ExponentialSmoothing(train_data['realizado'], seasonal='mul', seasonal_periods=season_length).fit()
+    # Salvar o modelo treinado
+    joblib.dump(model_ets, 'modelo_ets.pkl')
     return model_ets
+
+# Função para carregar o modelo ETS pré-treinado
+def load_ets_model():
+    if os.path.exists('modelo_ets.pkl'):
+        # Carregar o modelo pré-processado
+        model_ets = joblib.load('modelo_ets.pkl')
+        return model_ets
+    else:
+        return None
 
 # Função para previsão com o modelo ETS
 @st.cache_data
@@ -72,8 +85,15 @@ st.write(f"A data de corte é: {cut_date}")
 st.write(f"Tamanho do conjunto de treino: {len(train)}")
 st.write(f"Tamanho do conjunto de validação: {len(valid)}")
 
-# Treinar o modelo ETS
-model_ets = train_ets_model(train)
+# Carregar o modelo ETS, se já existir
+model_ets = load_ets_model()
+
+# Se o modelo não foi carregado, treine-o
+if model_ets is None:
+    st.write("Treinando o modelo ETS...")
+    model_ets = train_ets_model(train)
+else:
+    st.write("Modelo ETS carregado.")
 
 # Prever com o modelo ETS
 ets_df, wmape_ets, MAE_ets, MSE_ets, R2_ets = forecast_ets(train, valid, model_ets)
