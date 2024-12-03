@@ -88,7 +88,7 @@ model_ets = train_ets_model(train)
 # Função para previsão com o modelo ETS (agora reutiliza o modelo treinado)
 def forecast_ets(model_ets, valid):
     forecast_ets = model_ets.forecast(len(valid))
-    orecast_dates = pd.date_range(start=valid['data'].min() - timedelta(days=1), periods=len(valid), freq='D') # modificação na geração de datas
+    forecast_dates = pd.date_range(start=valid['data'].min() - timedelta(days=1), periods=len(valid), freq='D') # modificação na geração de datas
     ets_df = pd.DataFrame({'data': forecast_dates, 'previsão': forecast_ets})
     ets_df = ets_df.merge(valid, on=['data'], how='inner')
 
