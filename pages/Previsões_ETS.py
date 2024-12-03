@@ -17,7 +17,7 @@ def wmape(y_true, y_pred):
 # Carregar e preparar os dados (com cache)
 @st.cache_data
 def load_data():
-    df = pd.read_csv('https://github.com/ISQRS00/dashboard_tc4/blob/main/Pasta%203(Planilha2).csv', sep=';')
+    df = pd.read_csv('https://raw.githubusercontent.com/ISQRS00/dashboard_tc4/main/barril.csv', sep=';')
     df.drop(columns=['Unnamed: 2'], inplace=True)
     df.rename(columns={'Data': 'data', 'Preço - petróleo bruto - Brent (FOB) - US$ - Energy Information Administration (EIA) - EIA366_PBRENT366': 'realizado'}, inplace=True)
     df['data'] = pd.to_datetime(df['data'], format='%d/%m/%Y', dayfirst=True)
@@ -64,7 +64,7 @@ dias_corte = st.number_input('Selecione o número de dias para o corte entre 7 e
 cut_date = df_barril_petroleo['data'].max() - timedelta(days=dias_corte)
 
 # Dividir em treino e validação
-train = df_barril_petroleo.loc[df_barril_petroleo['data'] < cut_date]
+train = df_barril_petroleo.loc[(df_barril_petroleo['data'].dt.year > 2024) &(df_barril_petroleo['data'] < cut_date)]
 valid = df_barril_petroleo.loc[df_barril_petroleo['data'] >= cut_date]
 
 # Exibir o tamanho dos conjuntos
