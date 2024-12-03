@@ -97,7 +97,7 @@ if st.button("Gerar Previsão"):
         yaxis=dict(title="Valor (US$)", tickformat=".3f"),
         autosize=True
     )
-    st.plotly_chart(fig_ets)
+    st.plotly_chart(fig_ets, use_container_width=True)
 
     # Opção de Download dos Resultados
     st.subheader('Baixar Resultados')
