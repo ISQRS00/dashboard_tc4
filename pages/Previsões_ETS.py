@@ -29,7 +29,7 @@ def train_ets_model(train_data, season_length=252):
 st.set_page_config(page_title="Deploy | Tech Challenge 4 | FIAP", layout='wide')
 
 # Carregar e preparar os dados
-@st.cache_data
+@st.cache_data(ttl=3600)
 def load_data():
     df = pd.read_csv('https://raw.githubusercontent.com/ISQRS00/dashboard_tc4/main/barril.csv', sep=';')
     df.drop(columns=['Unnamed: 2'], inplace=True)
