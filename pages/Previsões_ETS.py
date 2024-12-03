@@ -28,15 +28,13 @@ def load_data():
 # Função para treinar o modelo ETS (utilizar cache de recursos)
 @st.cache_resource
 def train_ets_model(train_data, season_length=252):
-    st.write("Treinando o modelo ETS...")
     model_ets = sm.tsa.ExponentialSmoothing(train_data['realizado'], seasonal='mul', seasonal_periods=season_length).fit()
     return model_ets
 
 # Função para previsão com o modelo ETS
 @st.cache_data
-def forecast_ets(train, valid, _model_ets):
-    st.write("Gerando previsões...")
-    forecast_ets = _model_ets.forecast(len(valid))  # Usando o parâmetro com o underscore
+def forecast_ets(train, valid, _model_ets):  # Modificado para _model_ets
+    forecast_ets = _model_ets.forecast(len(valid))
     forecast_dates = pd.date_range(start=train['data'].iloc[-1] + pd.Timedelta(days=1), periods=len(valid), freq='D')
     ets_df = pd.DataFrame({'data': forecast_dates, 'previsão': forecast_ets})
     ets_df = ets_df.merge(valid, on=['data'], how='inner')
@@ -64,21 +62,29 @@ dias_corte = st.number_input('Selecione o número de dias para o corte entre 7 e
 
 # Calcular a data de corte com base no número de dias
 cut_date = df_barril_petroleo['data'].max() - timedelta(days=dias_corte)
-st.write(f"A data de corte é: {cut_date}")
 
 # Dividir em treino e validação
 train = df_barril_petroleo.loc[df_barril_petroleo['data'] < cut_date]
 valid = df_barril_petroleo.loc[df_barril_petroleo['data'] >= cut_date]
 
-# Verificar tamanhos dos conjuntos de treino e validação
+# Exibir o tamanho dos conjuntos
+st.write(f"A data de corte é: {cut_date}")
 st.write(f"Tamanho do conjunto de treino: {len(train)}")
 st.write(f"Tamanho do conjunto de validação: {len(valid)}")
 
-# Treinar o modelo ETS
-model_ets = train_ets_model(train)
+# Criar uma barra de progresso
+progress = st.progress(0)
 
-# Forecast ETS
+# Treinar o modelo ETS
 if st.button("Gerar Previsão"):
+    # Atualizar barra de progresso para indicar que o treinamento está em andamento
+    for i in range(100):
+        progress.progress(i + 1)
+    
+    # Treinar o modelo
+    model_ets = train_ets_model(train)
+    
+    # Prever com o modelo ETS
     ets_df, wmape_ets, MAE_ets, MSE_ets, R2_ets = forecast_ets(train, valid, model_ets)
 
     st.subheader('Métricas de Desempenho do Modelo ETS')
