@@ -17,12 +17,14 @@ def wmape(y_true, y_pred):
     return np.abs(y_true - y_pred).sum() / np.abs(y_true).sum()
 
 # Função para treinar o modelo ETS com cache
-@st.cache_data
-def train_ets_model(train_data):
-    season_length = 252  # Sazonalidade anual
-    model_ets = sm.tsa.ExponentialSmoothing(train_data['realizado'], seasonal='mul', seasonal_periods=season_length).fit(optimized=True)
+@st.cache_data(show_spinner=True)
+def train_ets_model(train_data, season_length=252):
+    model_ets = sm.tsa.ExponentialSmoothing(
+        train_data['realizado'], 
+        seasonal='mul', 
+        seasonal_periods=season_length
+    ).fit(optimized=True)  # Remova 'maxiter' e 'tol'
     return model_ets
-
 # Configurações do Streamlit
 st.set_page_config(page_title="Deploy | Tech Challenge 4 | FIAP", layout='wide')
 
